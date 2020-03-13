@@ -13,7 +13,7 @@ const config = require('../config.json');
 module.exports = {
     command: ['render', 'frame', 'fail'],
     description: "Render picture or gif of a beatmap at a specific time. Videos 10 seconds or longer are automatically rendered as mp4 video with audio and beatmap background.",
-    usage: '[beatmap url] [+mods] [AR8] [CS6] [strains/aim/speed/fail] [mp4] [plain] [120fps] [mm:ss] [4s]',
+    usage: '[beatmap url] [+mods] [AR8] [CS6] [preview/strains/aim/speed/fail] [20%] [mp4] [plain] [120fps] [mm:ss] [353x] [4s]',
     example: [
         {
             run: "render strains",
@@ -28,12 +28,12 @@ module.exports = {
             result: "Returns an image of the last beatmap at 1 minute and 5 seconds."
         },
         {
-            run: "render speed 10s",
-            result: "Returns a 10 second video of the streamiest part on the last beatmap."
+            run: "render speed 10s 50%",
+            result: "Returns a 10 second video of the streamiest part on the last beatmap at half speed."
         },
         {
-            run: "render strains 120fps plain",
-            result: "Returns a 120fps video of the hardest part on the last beatmap without sound and black background."
+            run: "render 120fps 353x plain",
+            result: "Returns a 120fps video at 353 combo on the last beatmap without sound and black background."
         }
     ],
     configRequired: ['debug'],
@@ -61,6 +61,8 @@ module.exports = {
             }
 
             let fps = 60;
+            let combo = 0;
+            let speed = 1;
 
             argv.map(arg => arg.toLowerCase());
 
@@ -83,6 +85,11 @@ module.exports = {
                 }else if(arg == 'strains' || arg == 'aim' || arg == 'speed'){
                     type = arg;
                     length = 4;
+				}else if(arg == 'preview'){
+                    type = arg
+                    length = 9;
+                    video_type = 'mp4';
+                    audio = true;
                 }else if(arg == 'mp4'){
                     video_type = 'mp4';
                 }else if(arg == 'audio'){
@@ -90,6 +97,8 @@ module.exports = {
                     video_type = 'mp4';
                 }else if(arg == 'plain'){
                     audio = false;
+                }else if(arg.endsWith('%')){
+                    speed = parseInt(arg) / 100;
                 }else if(arg.endsWith('fps')){
                     let _fps = parseInt(arg);
                     if(!isNaN(_fps)){
@@ -98,6 +107,8 @@ module.exports = {
                     }
                 }else if(arg.endsWith('s')){
                     length = parseFloat(arg);
+                }else if(arg.endsWith('x')){
+                    combo = parseInt(arg);
                 }else if(/^([0-9]+)$/g.test(arg)){
                     time += parseInt(arg) * 1000;
                 }else if(arg.toLowerCase().startsWith('ar')){
@@ -165,39 +176,58 @@ module.exports = {
                     download_promise.catch(reject);
                 }
 
+                let preview_promise;
+
                 Promise.resolve(download_promise).then(() => {
                     if(type == 'strains' || type == 'aim' || type == 'speed'){
                         if(config.debug)
                             helper.log('getting strains for mods', mods);
 
                         time = osu.get_strains(download_path, mods.join(''), type).max_strain_time_real - 2000;
-                    }
+                    }else if(type == 'preview'){
+						preview_promise = osu.get_preview_point(download_path);
+					}
 
-                    if(length > 0 || objects){
-                        resolve({
-                            content: 'Rendering...',
-                            replace_promise: new Promise((resolve, reject) => {
-                                frame.get_frames(download_path, time, length * 1000, mods, size, {
-                                    type: video_type, cs, ar, black: false, score_id, audio, fps,
-                                    fill: video_type == 'mp4', noshadow: true, percent, border: false, objects
-                                }, (err, send, remove_path) => {
-                                    if(err)
-                                        reject(err);
+					Promise.resolve(preview_promise).then(previewTime => {
+						console.log('previewTime', previewTime);
 
-                                    resolve({file: send, name: 'render.gif', remove_path});
-                                });
-                            })
-                        });
-                    }else{
-                        frame.get_frame(download_path, time, mods, [800, 600], {
-                            cs: cs, ar: ar, score_id, black: true, fill: true, percent: percent
-                        }, (err, buf) => {
-                            if(err)
-                                reject(err);
+						if(previewTime)
+							time = previewTime;
 
-                            resolve({file: buf, name: 'frame.png'});
-                        });
-                    }
+						if(length > 0 || objects){
+							resolve({
+								content: 'Rendering...',
+								replace_promise: new Promise((resolve, reject) => {
+									frame.get_frames(download_path, time, length * 1000, mods, size, {
+                                        combo,
+										type: video_type, cs, ar, black: false, score_id, audio, fps, speed,
+										fill: video_type == 'mp4', noshadow: true, percent, border: false, objects
+									}, (err, send, remove_path) => {
+										if(err)
+											reject(err);
+
+										resolve({file: send, name: 'render.gif', remove_path});
+									});
+								})
+							});
+						}else{
+							frame.get_frame(download_path, time, mods, [800, 600], {
+                                combo,
+								cs: cs, ar: ar, score_id, black: true, fill: true, percent: percent
+							}, (err, buf) => {
+								if(err)
+									reject(err);
+
+								resolve({file: buf, name: 'frame.png'});
+							});
+						}
+
+					}).catch(err => {
+						if(config.debug)
+							helper.error(err);
+
+						reject(err);
+					});
                 }).catch(err => {
                     if(config.debug)
                         helper.error(err);

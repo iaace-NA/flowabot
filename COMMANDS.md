@@ -27,6 +27,7 @@
 - [!render](#render)
 - [!score](#score)
 - [!strains](#strains)
+- [!time](#time)
 - [!top](#top)
 - [!uptime](#uptime)
 - [!viewers](#viewers)
@@ -315,7 +316,7 @@ Render picture or gif of a beatmap at a specific time. Videos 10 seconds or long
 
 **Variations**: `!render`, `!frame`, `!fail`
 
-**Usage**: `!render [beatmap url] [+mods] [AR8] [CS6] [strains/aim/speed/fail] [mp4] [plain] [120fps] [mm:ss] [4s]`
+**Usage**: `!render [beatmap url] [+mods] [AR8] [CS6] [preview/strains/aim/speed/fail] [mp4] [plain] [120fps] [mm:ss] [353x] [4s]`
 ### Examples:
 
 ```
@@ -339,9 +340,9 @@ Returns an image of the last beatmap at 1 minute and 5 seconds.
 Returns a 10 second video of the streamiest part on the last beatmap.
 
 ```
-!render strains 120fps plain
+!render 120fps 353x plain
 ```
-Returns a 120fps video of the hardest part on the last beatmap without sound and black background.
+Returns a 120fps video at 353 combo on the last beatmap without sound and black background.
 ## !score
 Search for a score on a beatmap.
 
@@ -382,6 +383,16 @@ Returns strain graph with HR applied and CS set to 5 for the last beatmap.
 !strains https://osu.ppy.sh/b/75 aim
 ```
 Returns aim strain graph for this beatmap.
+## !time
+Get the current time at a place.
+
+**Usage**: `!time [name of place, e.g. city]`
+### Example:
+
+```
+!time london
+```
+Returns the current time in London.
 ## !top
 Show a specific top play.
 
